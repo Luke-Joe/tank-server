@@ -5,6 +5,15 @@ export enum MessageType {
   LEAVE = "LEAVE",
 }
 
+export enum ServerMessageType {
+  ID_ASSIGNED = "ID_ASSIGNED",
+  ROOM_JOINED = "ROOM_JOINED",
+  PEER_CONNECTED = "PEER_CONNECTED",
+  PEER_DISCONNECTED = "PEER_DISCONNECTED",
+  RELAY = "RELAY",
+  ERROR = "ERROR",
+}
+
 export type CreateRoomMessage = {
   type: MessageType.CREATE;
 };

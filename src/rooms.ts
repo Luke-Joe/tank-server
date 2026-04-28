@@ -1,6 +1,9 @@
+import { ServerMessageType } from "./types.js";
+import { send } from "./utils.js";
+
 export const MAX_PEERS = 4;
 
-interface Room {
+export interface Room {
   peerIds: number[];
   hostId: number;
   joinCode: string;
@@ -11,12 +14,12 @@ export interface CreateRoomInput {
 }
 
 export interface AddPeerInput {
-  joinCode: string;
+  room: Room;
   peerId: number;
 }
 
 export interface RemovePeerInput {
-  joinCode: string;
+  room: Room;
   peerId: number;
 }
 
@@ -36,30 +39,22 @@ export function createRoom(input: CreateRoomInput): Room {
   return room;
 }
 
-export function getRoom(joinCode: string): Room {
-  const room = rooms.get(joinCode);
-
-  if (!room) {
-    throw new Error(`No rooms with joinCode: ${joinCode}`);
-  }
-
-  return room;
+export function getRoom(joinCode: string): Room | undefined {
+  return rooms.get(joinCode);
 }
 
 export function addPeer(input: AddPeerInput): Room {
-  const room = getRoom(input.joinCode);
+  const { room, peerId } = input;
 
-  room.peerIds.push(input.peerId);
+  room.peerIds.push(peerId);
 
   return room;
 }
 
 export function removePeer(input: RemovePeerInput): void {
-  const room = getRoom(input.joinCode);
+  const { room, peerId } = input;
 
-  room.peerIds = room.peerIds.filter((id) => id !== input.peerId);
-
-  throw new Error("Not Implemented");
+  room.peerIds = room.peerIds.filter((id) => id !== peerId);
 }
 
 function generateJoinCode(): string {
