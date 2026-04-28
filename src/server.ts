@@ -1,12 +1,14 @@
-import { WebSocketServer, WebSocket } from "ws";
-import { rooms } from "./rooms.js";
-import { MessageType } from "./types.js";
+import { WebSocketServer } from "ws";
+import { addPeerSocket, removePeerSocket } from "./peers.js";
+
+import { MessageType, ServerMessageType } from "./types.js";
 import {
   handleCreate,
   handleJoin,
   handleLeave,
   handleRelay,
 } from "./handlers.js";
+import { send } from "./utils.js";
 
 const webSocketServer = new WebSocketServer({
   port: 8080,
@@ -14,15 +16,13 @@ const webSocketServer = new WebSocketServer({
 
 let counter = 0;
 
-const peerToSocketMap = new Map<number, WebSocket>();
-
 webSocketServer.on("connection", (socket) => {
   counter++;
   const peerId = counter;
-  peerToSocketMap.set(peerId, socket);
+  addPeerSocket(peerId, socket);
   console.log(`peer ${peerId} connected`);
 
-  socket.send(JSON.stringify({ type: "id_assigned", id: peerId }));
+  send(socket, { type: ServerMessageType.ID_ASSIGNED, id: peerId });
 
   socket.on("message", (data) => {
     try {
@@ -51,7 +51,7 @@ webSocketServer.on("connection", (socket) => {
   });
 
   socket.on("close", () => {
-    peerToSocketMap.delete(peerId);
+    removePeerSocket(peerId);
     console.log(`peer ${peerId} disconnected`);
   });
 });
