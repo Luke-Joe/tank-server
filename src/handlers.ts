@@ -6,8 +6,21 @@ import {
   type JoinRoomMessage,
   type RelayMessage,
 } from "./types.js";
-import { addPeer, createRoom, getRoom, MAX_PEERS } from "./rooms.js";
-import { send } from "./utils.js";
+import {
+  addPeer,
+  createRoom,
+  getRoom,
+  MAX_PEERS,
+  removePeer,
+} from "./rooms.js";
+import { broadcast, send } from "./utils.js";
+import {
+  BROADCAST_TARGET,
+  getPeerRoom,
+  getPeerSocket,
+  removePeerRoom,
+  setPeerRoom,
+} from "./peers.js";
 
 interface BaseMessageInput {
   socket: WebSocket;
@@ -47,35 +60,108 @@ export function handleJoin(input: HandleJoinInput): void {
 
   if (!room) {
     send(socket, {
-        type: ServerMessageType.ERROR,
-        message: "Room not found"
-    })
-    
+      type: ServerMessageType.ERROR,
+      message: "Room not found",
+    });
+
     return;
   }
 
   if (room.peerIds.length >= MAX_PEERS) {
     send(socket, {
-        type: ServerMessageType.ERROR,
-        message: "Room is full"
-    })
+      type: ServerMessageType.ERROR,
+      message: "Room is full",
+    });
 
     return;
   }
-  
 
+  const existingPeers = [...room.peerIds];
   addPeer({ room, peerId });
+  setPeerRoom({ peerId, room });
+
+  broadcast(existingPeers, {
+    type: ServerMessageType.PEER_CONNECTED,
+    peerId,
+  });
 
   send(socket, {
-    type: ServerMessageType.PEER_CONNECTED,
-    joinCode: 
-  })
+    type: ServerMessageType.ROOM_JOINED,
+    joinCode: room.joinCode,
+    peers: room.peerIds,
+    hostId: room.hostId,
+  });
 }
 
 export function handleRelay(input: HandleRelayInput): void {
-  throw new Error("not implemented");
+  const { socket, peerId, message } = input;
+
+  const targetPeerId = message.targetPeerId;
+
+  if (targetPeerId === BROADCAST_TARGET) {
+    const room = getPeerRoom(peerId);
+
+    if (!room) {
+      send(socket, {
+        type: ServerMessageType.ERROR,
+        message: "Room not found",
+      });
+
+      return;
+    }
+
+    const peerIds = room.peerIds;
+
+    broadcast(
+      peerIds,
+      {
+        type: ServerMessageType.RELAY,
+        from: peerId,
+        data: message.data,
+      },
+      peerId,
+    );
+
+    return;
+  }
+
+  const targetSocket = getPeerSocket(targetPeerId);
+
+  if (!targetSocket) {
+    send(socket, {
+      type: ServerMessageType.ERROR,
+      message: `Socket not found for peer: ${targetPeerId}`,
+    });
+
+    return;
+  }
+
+  send(targetSocket, {
+    type: ServerMessageType.RELAY,
+    from: peerId,
+    data: message.data,
+  });
 }
 
 export function handleLeave(input: HandleLeaveInput): void {
-  throw new Error("not implemented");
+  const { socket, peerId } = input;
+
+  const room = getPeerRoom(peerId);
+
+  if (!room) {
+    send(socket, {
+      type: ServerMessageType.ERROR,
+      message: `Room not found`,
+    });
+
+    return;
+  }
+
+  removePeerRoom(peerId);
+  removePeer({ room, peerId });
+
+  broadcast(room.peerIds, {
+    type: ServerMessageType.PEER_DISCONNECTED,
+    peerId,
+  });
 }
