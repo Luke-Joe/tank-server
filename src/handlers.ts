@@ -45,6 +45,8 @@ export function handleCreate(input: HandleCreateInput): void {
 
   const room = createRoom({ hostId: peerId });
 
+  setPeerRoom({ peerId, room });
+
   send(socket, {
     type: ServerMessageType.ROOM_JOINED,
     joinCode: room.joinCode,
