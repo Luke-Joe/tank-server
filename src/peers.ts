@@ -3,8 +3,8 @@ import type { Room } from "./rooms.js";
 
 export const BROADCAST_TARGET = 0;
 
-export const peerToSocketMap = new Map<number, WebSocket>();
-export const peerToRoomMap = new Map<number, Room>();
+const peerToSocketMap = new Map<number, WebSocket>();
+const peerToRoomMap = new Map<number, Room>();
 
 export interface SetPeerRoomInput {
   peerId: number;

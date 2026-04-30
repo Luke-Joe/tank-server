@@ -52,6 +52,8 @@ webSocketServer.on("connection", (socket) => {
 
   socket.on("close", () => {
     removePeerSocket(peerId);
+    handleLeave({ peerId, socket });
+
     console.log(`peer ${peerId} disconnected`);
   });
 });
