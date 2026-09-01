@@ -1,6 +1,3 @@
-import { ServerMessageType } from "./types.js";
-import { send } from "./utils.js";
-
 export const MAX_PEERS = 4;
 
 export interface Room {

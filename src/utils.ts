@@ -2,6 +2,8 @@ import { WebSocket } from "ws";
 import { getPeerSocket } from "./peers.js";
 
 export function send(socket: WebSocket, payload: object): void {
+  console.log(`Sending:`, payload);
+
   socket.send(JSON.stringify(payload));
 }
 

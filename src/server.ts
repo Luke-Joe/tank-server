@@ -28,6 +28,8 @@ webSocketServer.on("connection", (socket) => {
     try {
       const message = JSON.parse(data.toString());
 
+      console.log(`peer ${peerId} ->`, message);
+
       switch (message.type) {
         case MessageType.CREATE:
           handleCreate({ socket, peerId, message });

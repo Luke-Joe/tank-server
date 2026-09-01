@@ -53,6 +53,8 @@ export function handleCreate(input: HandleCreateInput): void {
     peers: room.peerIds,
     hostId: room.hostId,
   });
+
+  console.log(`peer ${peerId} created room: ${room.joinCode}`);
 }
 
 export function handleJoin(input: HandleJoinInput): void {
@@ -93,6 +95,8 @@ export function handleJoin(input: HandleJoinInput): void {
     peers: room.peerIds,
     hostId: room.hostId,
   });
+
+  console.log(`peer ${peerId} joined room: ${room.joinCode}`);
 }
 
 export function handleRelay(input: HandleRelayInput): void {
