@@ -14,7 +14,7 @@ export function broadcast(
 ): void {
   for (const peerId of peerIds) {
     if (peerId === exclude) {
-      return;
+      continue;
     }
 
     const socket = getPeerSocket(peerId);

@@ -23,7 +23,7 @@ describe("createRoom", () => {
 });
 
 describe("addPeer", () => {
-  it("adds a peer to to an existing room", () => {
+  it("adds a peer to an existing room", () => {
     const room = createRoom({ hostId: 67 });
 
     const result = addPeer({ room, peerId: 2 });
@@ -46,6 +46,17 @@ describe("removePeer", () => {
     });
 
     expect(room.peerIds).toEqual([67, 3]);
+  });
+
+  it("does not change the room if the peer is not in the room", () => {
+    const room = createRoom({ hostId: 67 });
+
+    removePeer({
+      room,
+      peerId: 2,
+    });
+
+    expect(room.peerIds).toEqual([67]);
   });
 });
 
