@@ -12,6 +12,7 @@ import {
   getRoom,
   MAX_PEERS,
   removePeer,
+  type Room,
 } from "./rooms.js";
 import { broadcast, send } from "./utils.js";
 import {
@@ -39,6 +40,15 @@ export interface HandleRelayInput extends BaseMessageInput {
 }
 
 export interface HandleLeaveInput extends BaseMessageInput {}
+
+interface RelayBroadcastInput extends HandleRelayInput {
+  room: Room;
+}
+
+interface RelayDirectInput extends HandleRelayInput {
+  targetPeerId: number;
+  room: Room;
+}
 
 export function handleCreate(input: HandleCreateInput): void {
   const { peerId, socket } = input;
@@ -104,49 +114,24 @@ export function handleRelay(input: HandleRelayInput): void {
 
   const targetPeerId = message.targetPeerId;
 
-  if (targetPeerId === BROADCAST_TARGET) {
-    const room = getPeerRoom(peerId);
+  const room = getPeerRoom(peerId);
 
-    if (!room) {
-      send(socket, {
-        type: ServerMessageType.ERROR,
-        message: "Room not found",
-      });
-
-      return;
-    }
-
-    const peerIds = room.peerIds;
-
-    broadcast(
-      peerIds,
-      {
-        type: ServerMessageType.RELAY,
-        from: peerId,
-        data: message.data,
-      },
-      peerId,
-    );
-
-    return;
-  }
-
-  const targetSocket = getPeerSocket(targetPeerId);
-
-  if (!targetSocket) {
+  if (!room) {
     send(socket, {
       type: ServerMessageType.ERROR,
-      message: `Socket not found for peer: ${targetPeerId}`,
+      message: "Room not found",
     });
 
     return;
   }
 
-  send(targetSocket, {
-    type: ServerMessageType.RELAY,
-    from: peerId,
-    data: message.data,
-  });
+  if (targetPeerId === BROADCAST_TARGET) {
+    relayBroadcast({ socket, peerId, message, room });
+
+    return;
+  }
+
+  relayDirect({ socket, peerId, message, targetPeerId, room });
 }
 
 export function handleLeave(input: HandleLeaveInput): void {
@@ -169,5 +154,53 @@ export function handleLeave(input: HandleLeaveInput): void {
   broadcast(room.peerIds, {
     type: ServerMessageType.PEER_DISCONNECTED,
     peerId,
+  });
+}
+
+function relayBroadcast(input: RelayBroadcastInput): void {
+  const { peerId, message, room } = input;
+
+  const peerIds = room.peerIds;
+
+  broadcast(
+    peerIds,
+    {
+      type: ServerMessageType.RELAY,
+      from: peerId,
+      data: message.data,
+    },
+    peerId,
+  );
+
+  return;
+}
+
+function relayDirect(input: RelayDirectInput): void {
+  const { socket, peerId, message, targetPeerId, room } = input;
+
+  if (getPeerRoom(targetPeerId) !== room) {
+    send(socket, {
+      type: ServerMessageType.ERROR,
+      message: `Target peer ${targetPeerId} is not in the same room`,
+    });
+
+    return;
+  }
+
+  const targetSocket = getPeerSocket(targetPeerId);
+
+  if (!targetSocket) {
+    send(socket, {
+      type: ServerMessageType.ERROR,
+      message: `Socket not found for peer: ${targetPeerId}`,
+    });
+
+    return;
+  }
+
+  send(targetSocket, {
+    type: ServerMessageType.RELAY,
+    from: peerId,
+    data: message.data,
   });
 }
