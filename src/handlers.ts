@@ -12,6 +12,7 @@ import {
   getRoom,
   MAX_PEERS,
   removePeer,
+  rooms,
   type Room,
 } from "./rooms.js";
 import { broadcast, send } from "./utils.js";
@@ -50,8 +51,21 @@ interface RelayDirectInput extends HandleRelayInput {
   room: Room;
 }
 
+interface RoomLeaveInput {
+  room: Room;
+  peerId: number;
+}
+
 export function handleCreate(input: HandleCreateInput): void {
   const { peerId, socket } = input;
+
+  if (getPeerRoom(peerId)) {
+    send(socket, {
+      type: ServerMessageType.ERROR,
+      message: "Peer is already in a room",
+    });
+    return;
+  }
 
   const room = createRoom({ hostId: peerId });
 
@@ -78,6 +92,14 @@ export function handleJoin(input: HandleJoinInput): void {
       message: "Room not found",
     });
 
+    return;
+  }
+
+  if (getPeerRoom(peerId)) {
+    send(socket, {
+      type: ServerMessageType.ERROR,
+      message: "Peer is already in a room",
+    });
     return;
   }
 
@@ -148,13 +170,13 @@ export function handleLeave(input: HandleLeaveInput): void {
     return;
   }
 
-  removePeerRoom(peerId);
-  removePeer({ room, peerId });
+  if (room.hostId === peerId) {
+    handleHostLeave({ room, peerId });
 
-  broadcast(room.peerIds, {
-    type: ServerMessageType.PEER_DISCONNECTED,
-    peerId,
-  });
+    return;
+  }
+
+  handlePeerLeave({ room, peerId });
 }
 
 function relayBroadcast(input: RelayBroadcastInput): void {
@@ -202,5 +224,34 @@ function relayDirect(input: RelayDirectInput): void {
     type: ServerMessageType.RELAY,
     from: peerId,
     data: message.data,
+  });
+}
+
+function handleHostLeave(input: RoomLeaveInput): void {
+  const { peerId, room } = input;
+
+  const remainingPeerIds = room.peerIds.filter((id) => id !== peerId);
+
+  for (const memberId of room.peerIds) {
+    removePeerRoom(memberId);
+  }
+
+  room.peerIds = [];
+  rooms.delete(room.joinCode);
+
+  broadcast(remainingPeerIds, {
+    type: ServerMessageType.ROOM_CLOSED,
+  });
+}
+
+function handlePeerLeave(input: RoomLeaveInput): void {
+  const { peerId, room } = input;
+
+  removePeerRoom(peerId);
+  removePeer({ room, peerId });
+
+  broadcast(room.peerIds, {
+    type: ServerMessageType.PEER_DISCONNECTED,
+    peerId,
   });
 }

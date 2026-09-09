@@ -52,6 +52,10 @@ export function removePeer(input: RemovePeerInput): void {
   const { room, peerId } = input;
 
   room.peerIds = room.peerIds.filter((id) => id !== peerId);
+
+  if (room.peerIds.length === 0) {
+    rooms.delete(room.joinCode);
+  }
 }
 
 function generateJoinCode(): string {
